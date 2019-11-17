@@ -9,6 +9,7 @@ import java.util.ArrayList;
  */
 public class ParseErrorList extends ArrayList<ParseError>{
     private static final int INITIAL_CAPACITY = 16;
+    private static final long serialVersionUID = -692244137942465773L;
     private final int maxSize;
     
     ParseErrorList(int initialCapacity, int maxSize) {

@@ -247,7 +247,7 @@ public class Entities {
 
     private static void appendEncoded(Appendable accum, EscapeMode escapeMode, int codePoint) throws IOException {
         final String name = escapeMode.nameForCodepoint(codePoint);
-        if (name != emptyName) // ok for identity check
+        if (!emptyName.equals(name)) // ok for identity check
             accum.append('&').append(name).append(';');
         else
             accum.append("&#x").append(Integer.toHexString(codePoint)).append(';');

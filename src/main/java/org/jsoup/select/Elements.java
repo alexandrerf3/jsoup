@@ -21,6 +21,8 @@ import java.util.List;
 
  @author Jonathan Hedley, jonathan@hedley.net */
 public class Elements extends ArrayList<Element> {
+    private static final long serialVersionUID = -8097779128391436079L;
+
     public Elements() {
     }
 
@@ -46,6 +48,7 @@ public class Elements extends ArrayList<Element> {
      */
     @Override
 	public Elements clone() {
+        super.clone();
         Elements clone = new Elements(size());
 
         for(Element e : this)

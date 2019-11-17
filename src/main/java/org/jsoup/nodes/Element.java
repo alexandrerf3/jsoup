@@ -14,7 +14,7 @@ import org.jsoup.select.NodeVisitor;
 import org.jsoup.select.QueryParser;
 import org.jsoup.select.Selector;
 
-import java.io.IOException;
+import java.io.*;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1510,7 +1510,8 @@ public class Element extends Node {
     }
 
     private static final class NodeList extends ChangeNotifyingArrayList<Node> {
-        private final Element owner;
+        private static final long serialVersionUID = -7276002112653931238L;
+        private Element owner;
 
         NodeList(Element owner, int initialCapacity) {
             super(initialCapacity);

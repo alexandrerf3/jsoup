@@ -17,6 +17,7 @@ import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
 
+import static java.lang.Math.max;
 import static org.jsoup.internal.StringUtil.inSorted;
 
 /**
@@ -99,12 +100,8 @@ public class HtmlTreeBuilder extends TreeBuilder {
                 tokeniser.transition(TokeniserState.Rawtext);
             else if (contextTag.equals("script"))
                 tokeniser.transition(TokeniserState.ScriptData);
-            else if (contextTag.equals(("noscript")))
-                tokeniser.transition(TokeniserState.Data); // if scripting enabled, rawtext
-            else if (contextTag.equals("plaintext"))
-                tokeniser.transition(TokeniserState.Data);
             else
-                tokeniser.transition(TokeniserState.Data); // default
+                tokeniser.transition(TokeniserState.Data);
 
             root = new Element(Tag.valueOf("html", settings), baseUri);
             doc.appendChild(root);
@@ -197,8 +194,7 @@ public class HtmlTreeBuilder extends TreeBuilder {
     Element insert(final Token.StartTag startTag) {
         // cleanup duplicate attributes:
         if (!startTag.attributes.isEmpty()) {
-            int dupes = startTag.attributes.deduplicate(settings);
-            if (dupes > 0) {
+            if (startTag.attributes.deduplicate(settings) > 0) {
                 error("Duplicate attribute");
             }
         }
@@ -255,14 +251,12 @@ public class HtmlTreeBuilder extends TreeBuilder {
     }
 
     void insert(Token.Comment commentToken) {
-        Comment comment = new Comment(commentToken.getData());
-        insertNode(comment);
+        insertNode(new Comment(commentToken.getData()));
     }
 
     void insert(Token.Character characterToken) {
         final Node node;
-        final Element el = currentElement();
-        final String tagName = el.tagName();
+        final String tagName = currentElement().tagName();
         final String data = characterToken.getData();
 
         if (characterToken.isCData())
@@ -271,7 +265,8 @@ public class HtmlTreeBuilder extends TreeBuilder {
             node = new DataNode(data);
         else
             node = new TextNode(data);
-        el.appendChild(node); // doesn't use insertNode, because we don't foster these; and will always have a stack.
+
+        currentElement().appendChild(node); // doesn't use insertNode, because we don't foster these; and will always have a stack.
     }
 
     private void insertNode(Node node) {
@@ -291,8 +286,7 @@ public class HtmlTreeBuilder extends TreeBuilder {
     }
 
     Element pop() {
-        int size = stack.size();
-        return stack.remove(size-1);
+        return stack.remove(stack.size()-1);
     }
 
     void push(Element element) {
@@ -304,45 +298,25 @@ public class HtmlTreeBuilder extends TreeBuilder {
     }
 
     boolean onStack(Element el) {
-        return isElementInQueue(stack, el);
-    }
-
-    private boolean isElementInQueue(ArrayList<Element> queue, Element element) {
-        for (int pos = queue.size() -1; pos >= 0; pos--) {
-            Element next = queue.get(pos);
-            if (next == element) {
-                return true;
-            }
-        }
-        return false;
+        return stack.contains(el);
     }
 
     Element getFromStack(String elName) {
         for (int pos = stack.size() -1; pos >= 0; pos--) {
-            Element next = stack.get(pos);
-            if (next.normalName().equals(elName)) {
-                return next;
+            if (stack.get(pos).normalName().equals(elName)) {
+                return stack.get(pos);
             }
         }
         return null;
     }
 
     boolean removeFromStack(Element el) {
-        for (int pos = stack.size() -1; pos >= 0; pos--) {
-            Element next = stack.get(pos);
-            if (next == el) {
-                stack.remove(pos);
-                return true;
-            }
-        }
-        return false;
+        return stack.remove(el);
     }
 
     void popStackToClose(String elName) {
         for (int pos = stack.size() -1; pos >= 0; pos--) {
-            Element next = stack.get(pos);
-            stack.remove(pos);
-            if (next.normalName().equals(elName))
+            if (stack.remove(pos).normalName().equals(elName))
                 break;
         }
     }
@@ -350,17 +324,14 @@ public class HtmlTreeBuilder extends TreeBuilder {
     // elnames is sorted, comes from Constants
     void popStackToClose(String... elNames) {
         for (int pos = stack.size() -1; pos >= 0; pos--) {
-            Element next = stack.get(pos);
-            stack.remove(pos);
-            if (inSorted(next.normalName(), elNames))
+            if (inSorted(stack.remove(pos).normalName(), elNames))
                 break;
         }
     }
 
     void popStackToBefore(String elName) {
         for (int pos = stack.size() -1; pos >= 0; pos--) {
-            Element next = stack.get(pos);
-            if (next.normalName().equals(elName)) {
+            if (stack.get(pos).normalName().equals(elName)) {
                 break;
             } else {
                 stack.remove(pos);
@@ -392,12 +363,9 @@ public class HtmlTreeBuilder extends TreeBuilder {
 
     Element aboveOnStack(Element el) {
         assert onStack(el);
-        for (int pos = stack.size() -1; pos >= 0; pos--) {
-            Element next = stack.get(pos);
-            if (next == el) {
-                return stack.get(pos-1);
-            }
-        }
+
+        if(stack.lastIndexOf(el) > 0)
+            return stack.get(stack.lastIndexOf(el)-1);
         return null;
     }
 
@@ -447,19 +415,13 @@ public class HtmlTreeBuilder extends TreeBuilder {
             } else if ("table".equals(name)) {
                 transition(HtmlTreeBuilderState.InTable);
                 break;
-            } else if ("head".equals(name)) {
-                transition(HtmlTreeBuilderState.InBody);
-                break; // frag
-            } else if ("body".equals(name)) {
-                transition(HtmlTreeBuilderState.InBody);
-                break;
             } else if ("frameset".equals(name)) {
                 transition(HtmlTreeBuilderState.InFrameset);
                 break; // frag
             } else if ("html".equals(name)) {
                 transition(HtmlTreeBuilderState.BeforeHead);
                 break; // frag
-            } else if (last) {
+            } else if ("head".equals(name) || "body".equals(name) || last) {
                 transition(HtmlTreeBuilderState.InBody);
                 break; // frag
             }
@@ -477,16 +439,14 @@ public class HtmlTreeBuilder extends TreeBuilder {
     private boolean inSpecificScope(String[] targetNames, String[] baseTypes, String[] extraTypes) {
         // https://html.spec.whatwg.org/multipage/parsing.html#has-an-element-in-the-specific-scope
         final int bottom = stack.size() -1;
-        final int top = bottom > MaxScopeSearchDepth ? bottom - MaxScopeSearchDepth : 0;
+        final int top = max(bottom - MaxScopeSearchDepth, 0);
         // don't walk too far up the tree
 
         for (int pos = bottom; pos >= top; pos--) {
             final String elName = stack.get(pos).normalName();
             if (inSorted(elName, targetNames))
                 return true;
-            if (inSorted(elName, baseTypes))
-                return false;
-            if (extraTypes != null && inSorted(elName, extraTypes))
+            if (inSorted(elName, baseTypes) || (extraTypes != null && inSorted(elName, extraTypes)))
                 return false;
         }
         //Validate.fail("Should not be reachable"); // would end up false because hitting 'html' at root (basetypes)
@@ -498,21 +458,15 @@ public class HtmlTreeBuilder extends TreeBuilder {
     }
 
     boolean inScope(String targetName) {
-        return inScope(targetName, null);
-    }
-
-    boolean inScope(String targetName, String[] extras) {
-        return inSpecificScope(targetName, TagsSearchInScope, extras);
-        // todo: in mathml namespace: mi, mo, mn, ms, mtext annotation-xml
-        // todo: in svg namespace: forignOjbect, desc, title
+        return inSpecificScope(targetName, TagsSearchInScope, null);
     }
 
     boolean inListItemScope(String targetName) {
-        return inScope(targetName, TagSearchList);
+        return inSpecificScope(targetName, TagsSearchInScope, TagSearchList);
     }
 
     boolean inButtonScope(String targetName) {
-        return inScope(targetName, TagSearchButton);
+        return inSpecificScope(targetName, TagsSearchInScope, TagSearchButton);
     }
 
     boolean inTableScope(String targetName) {
@@ -521,8 +475,7 @@ public class HtmlTreeBuilder extends TreeBuilder {
 
     boolean inSelectScope(String targetName) {
         for (int pos = stack.size() -1; pos >= 0; pos--) {
-            Element el = stack.get(pos);
-            String elName = el.normalName();
+            String elName = stack.get(pos).normalName();
             if (elName.equals(targetName))
                 return true;
             if (!inSorted(elName, TagSearchSelectScope)) // all elements except
@@ -586,8 +539,7 @@ public class HtmlTreeBuilder extends TreeBuilder {
     boolean isSpecial(Element el) {
         // todo: mathml's mi, mo, mn
         // todo: svg's foreigObject, desc, title
-        String name = el.normalName();
-        return inSorted(name, TagSearchSpecial);
+        return inSorted(el.normalName(), TagSearchSpecial);
     }
 
     Element lastFormattingElement() {
@@ -686,7 +638,7 @@ public class HtmlTreeBuilder extends TreeBuilder {
     }
 
     boolean isInActiveFormattingElements(Element el) {
-        return isElementInQueue(formattingElements, el);
+        return formattingElements.contains(el);
     }
 
     Element getActiveFormattingElement(String nodeName) {

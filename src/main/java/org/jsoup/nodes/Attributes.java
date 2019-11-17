@@ -6,15 +6,7 @@ import org.jsoup.internal.StringUtil;
 import org.jsoup.parser.ParseSettings;
 
 import java.io.IOException;
-import java.util.AbstractMap;
-import java.util.AbstractSet;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static org.jsoup.internal.Normalizer.lowerCase;
 
@@ -268,10 +260,14 @@ public class Attributes implements Iterable<Attribute>, Cloneable {
             }
 
             @Override
-            public Attribute next() {
-                final Attribute attr = new Attribute(keys[i], vals[i], Attributes.this);
-                i++;
-                return attr;
+            public Attribute next() throws NoSuchElementException {
+                try {
+                    final Attribute attr = new Attribute(keys[i], vals[i], Attributes.this);
+                    i++;
+                    return attr;
+                } catch (Exception e) {
+                    throw new NoSuchElementException(e.getMessage());
+                }
             }
 
             @Override
@@ -466,8 +462,12 @@ public class Attributes implements Iterable<Attribute>, Cloneable {
                 return false;
             }
 
-            public Entry<String, String> next() {
-                return new Attribute(attr.getKey().substring(dataPrefix.length()), attr.getValue());
+            public Entry<String, String> next() throws NoSuchElementException {
+                try {
+                    return new Attribute(attr.getKey().substring(dataPrefix.length()), attr.getValue());
+                } catch (Exception e) {
+                    throw new NoSuchElementException(e.getMessage());
+                }
             }
 
             public void remove() {
