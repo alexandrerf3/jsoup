@@ -834,6 +834,7 @@ public class HttpConnection implements Connection {
                 inputStreamRead = false; // ok to reparse if in bytes
             }
             Validate.isFalse(inputStreamRead, "Input stream already read and parsed, cannot re-read.");
+            assert req != null;
             Document doc = DataUtil.parseInputStream(bodyStream, charset, url.toExternalForm(), req.parser());
             charset = doc.outputSettings().charset().name(); // update charset from meta-equiv, possibly
             inputStreamRead = true;
@@ -846,6 +847,7 @@ public class HttpConnection implements Connection {
             if (byteData == null) {
                 Validate.isFalse(inputStreamRead, "Request has already been read (with .parse())");
                 try {
+                    assert req != null;
                     byteData = DataUtil.readToByteBuffer(bodyStream, req.maxBodySize());
                 } catch (IOException e) {
                     throw new UncheckedIOException(e);
@@ -884,6 +886,7 @@ public class HttpConnection implements Connection {
             Validate.isTrue(executed, "Request must be executed (with .execute(), .get(), or .post() before getting response body");
             Validate.isFalse(inputStreamRead, "Request has already been read");
             inputStreamRead = true;
+            assert req != null;
             return ConstrainableInputStream.wrap(bodyStream, DataUtil.bufferSize, req.maxBodySize());
         }
 

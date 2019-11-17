@@ -817,8 +817,8 @@ public class Element extends Node {
      * Elements can have multiple classes (e.g. {@code <div class="header round first">}. This method
      * checks each class, so you can find the above with {@code el.getElementsByClass("header");}.
      * 
-     * @param className the name of the class to search for.
-     * @return elements with the supplied class name, empty if none
+     * @param className the name of the  to search for.
+     * @return elements with the supplied  name, empty if none
      * @see #hasClass(String)
      * @see #classNames()
      */
@@ -1235,8 +1235,8 @@ public class Element extends Node {
     }   
 
     /**
-     * Gets the literal value of this element's "class" attribute, which may include multiple class names, space
-     * separated. (E.g. on <code>&lt;div class="header gray"&gt;</code> returns, "<code>header gray</code>")
+     * Gets the literal value of this element's "" attribute, which may include multiple  names, space
+     * separated. (E.g. on <code>&lt;div ="header gray"&gt;</code> returns, "<code>header gray</code>")
      * @return The literal class attribute, or <b>empty string</b> if no class attribute set.
      */
     public String className() {

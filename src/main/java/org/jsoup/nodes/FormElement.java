@@ -9,6 +9,7 @@ import org.jsoup.select.Elements;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * A HTML Form Element provides ready access to the form fields/controls that are associated with it. It also allows a
@@ -62,7 +63,7 @@ public class FormElement extends Element {
     public Connection submit() {
         String action = hasAttr("action") ? absUrl("action") : baseUri();
         Validate.notEmpty(action, "Could not determine a form action URL for submit. Ensure you set a base URI when parsing.");
-        Connection.Method method = attr("method").toUpperCase().equals("POST") ?
+        Connection.Method method = attr("method").toUpperCase(Locale.getDefault()).equals("POST") ?
                 Connection.Method.POST : Connection.Method.GET;
 
         return Jsoup.connect(action)
