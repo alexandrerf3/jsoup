@@ -550,111 +550,115 @@ enum HtmlTreeBuilderState {
             return true;
         }
 
+        private boolean adoptionAgencyAlgorithm(Token t, HtmlTreeBuilder tb, String name) {
+            for (int i = 0; i < 8; i++) {
+                Element formatEl = tb.getActiveFormattingElement(name);
+                if (formatEl == null)
+                    return anyOtherEndTag(t, tb);
+                else if (!tb.onStack(formatEl)) {
+                    tb.error(this);
+                    tb.removeFromActiveFormattingElements(formatEl);
+                    return true;
+                } else if (!tb.inScope(formatEl.normalName())) {
+                    tb.error(this);
+                    return false;
+                } else if (tb.currentElement() != formatEl)
+                    tb.error(this);
+
+                Element furthestBlock = null;
+                Element commonAncestor = null;
+                boolean seenFormattingElement = false;
+                ArrayList<Element> stack = tb.getStack();
+                // the spec doesn't limit to < 64, but in degenerate cases (9000+ stack depth) this prevents
+                // run-aways
+                final int stackSize = stack.size();
+                for (int si = 0; si < stackSize && si < 64; si++) {
+                    Element el = stack.get(si);
+                    if (el == formatEl) {
+                        commonAncestor = stack.get(si - 1);
+                        seenFormattingElement = true;
+                    } else if (seenFormattingElement && tb.isSpecial(el)) {
+                        furthestBlock = el;
+                        break;
+                    }
+                }
+                if (furthestBlock == null) {
+                    tb.popStackToClose(formatEl.normalName());
+                    tb.removeFromActiveFormattingElements(formatEl);
+                    return true;
+                }
+
+                // todo: Let a bookmark note the position of the formatting element in the list of active formatting elements relative to the elements on either side of it in the list.
+                // does that mean: int pos of format el in list?
+                Element node = furthestBlock;
+                Element lastNode = furthestBlock;
+                for (int j = 0; j < 3; j++) {
+                    if (tb.onStack(node))
+                        node = tb.aboveOnStack(node);
+                    if (!tb.isInActiveFormattingElements(node)) { // note no bookmark check
+                        tb.removeFromStack(node);
+                        continue;
+                    } else if (node == formatEl)
+                        break;
+
+                    Element replacement = new Element(Tag.valueOf(node.nodeName(), ParseSettings.preserveCase), tb.getBaseUri());
+                    // case will follow the original node (so honours ParseSettings)
+                    tb.replaceActiveFormattingElement(node, replacement);
+                    tb.replaceOnStack(node, replacement);
+                    node = replacement;
+
+                    if (lastNode == furthestBlock) {
+                        // todo: move the aforementioned bookmark to be immediately after the new node in the list of active formatting elements.
+                        // not getting how this bookmark both straddles the element above, but is inbetween here...
+                    }
+                    if (lastNode.parent() != null)
+                        lastNode.remove();
+                    node.appendChild(lastNode);
+
+                    lastNode = node;
+                }
+
+                if (StringUtil.inSorted(commonAncestor.normalName(), Constants.InBodyEndTableFosters)) {
+                    if (lastNode.parent() != null)
+                        lastNode.remove();
+                    tb.insertInFosterParent(lastNode);
+                } else {
+                    if (lastNode.parent() != null)
+                        lastNode.remove();
+                    commonAncestor.appendChild(lastNode);
+                }
+
+                Element adopter = new Element(formatEl.tag(), tb.getBaseUri());
+                adopter.attributes().addAll(formatEl.attributes());
+                Node[] childNodes = furthestBlock.childNodes().toArray(new Node[0]);
+                for (Node childNode : childNodes) {
+                    adopter.appendChild(childNode); // append will reparent. thus the clone to avoid concurrent mod.
+                }
+                furthestBlock.appendChild(adopter);
+                tb.removeFromActiveFormattingElements(formatEl);
+                // todo: insert the new element into the list of active formatting elements at the position of the aforementioned bookmark.
+                tb.removeFromStack(formatEl);
+                tb.insertOnStackAfter(furthestBlock, adopter);
+            }
+            return true;
+        }
+
         private boolean processEndTagInBody(Token t, HtmlTreeBuilder tb) {
             Token.EndTag endTag = t.asEndTag();
             String name = endTag.normalName();
             if (StringUtil.inSorted(name, Constants.InBodyEndAdoptionFormatters)) {
                 // Adoption Agency Algorithm.
-                for (int i = 0; i < 8; i++) {
-                    Element formatEl = tb.getActiveFormattingElement(name);
-                    if (formatEl == null)
-                        return anyOtherEndTag(t, tb);
-                    else if (!tb.onStack(formatEl)) {
-                        tb.error(this);
-                        tb.removeFromActiveFormattingElements(formatEl);
-                        return true;
-                    } else if (!tb.inScope(formatEl.normalName())) {
-                        tb.error(this);
-                        return false;
-                    } else if (tb.currentElement() != formatEl)
-                        tb.error(this);
-
-                    Element furthestBlock = null;
-                    Element commonAncestor = null;
-                    boolean seenFormattingElement = false;
-                    ArrayList<Element> stack = tb.getStack();
-                    // the spec doesn't limit to < 64, but in degenerate cases (9000+ stack depth) this prevents
-                    // run-aways
-                    final int stackSize = stack.size();
-                    for (int si = 0; si < stackSize && si < 64; si++) {
-                        Element el = stack.get(si);
-                        if (el == formatEl) {
-                            commonAncestor = stack.get(si - 1);
-                            seenFormattingElement = true;
-                        } else if (seenFormattingElement && tb.isSpecial(el)) {
-                            furthestBlock = el;
-                            break;
-                        }
-                    }
-                    if (furthestBlock == null) {
-                        tb.popStackToClose(formatEl.normalName());
-                        tb.removeFromActiveFormattingElements(formatEl);
-                        return true;
-                    }
-
-                    // todo: Let a bookmark note the position of the formatting element in the list of active formatting elements relative to the elements on either side of it in the list.
-                    // does that mean: int pos of format el in list?
-                    Element node = furthestBlock;
-                    Element lastNode = furthestBlock;
-                    for (int j = 0; j < 3; j++) {
-                        if (tb.onStack(node))
-                            node = tb.aboveOnStack(node);
-                        if (!tb.isInActiveFormattingElements(node)) { // note no bookmark check
-                            tb.removeFromStack(node);
-                            continue;
-                        } else if (node == formatEl)
-                            break;
-
-                        Element replacement = new Element(Tag.valueOf(node.nodeName(), ParseSettings.preserveCase), tb.getBaseUri());
-                        // case will follow the original node (so honours ParseSettings)
-                        tb.replaceActiveFormattingElement(node, replacement);
-                        tb.replaceOnStack(node, replacement);
-                        node = replacement;
-
-                        if (lastNode == furthestBlock) {
-                            // todo: move the aforementioned bookmark to be immediately after the new node in the list of active formatting elements.
-                            // not getting how this bookmark both straddles the element above, but is inbetween here...
-                        }
-                        if (lastNode.parent() != null)
-                            lastNode.remove();
-                        node.appendChild(lastNode);
-
-                        lastNode = node;
-                    }
-
-                    if (StringUtil.inSorted(commonAncestor.normalName(), Constants.InBodyEndTableFosters)) {
-                        if (lastNode.parent() != null)
-                            lastNode.remove();
-                        tb.insertInFosterParent(lastNode);
-                    } else {
-                        if (lastNode.parent() != null)
-                            lastNode.remove();
-                        commonAncestor.appendChild(lastNode);
-                    }
-
-                    Element adopter = new Element(formatEl.tag(), tb.getBaseUri());
-                    adopter.attributes().addAll(formatEl.attributes());
-                    Node[] childNodes = furthestBlock.childNodes().toArray(new Node[0]);
-                    for (Node childNode : childNodes) {
-                        adopter.appendChild(childNode); // append will reparent. thus the clone to avoid concurrent mod.
-                    }
-                    furthestBlock.appendChild(adopter);
-                    tb.removeFromActiveFormattingElements(formatEl);
-                    // todo: insert the new element into the list of active formatting elements at the position of the aforementioned bookmark.
-                    tb.removeFromStack(formatEl);
-                    tb.insertOnStackAfter(furthestBlock, adopter);
-                }
+                return adoptionAgencyAlgorithm(t, tb, name);
             } else if (StringUtil.inSorted(name, Constants.InBodyEndClosers)) {
                 if (!tb.inScope(name)) {
                     // nothing to close
                     tb.error(this);
                     return false;
-                } else {
-                    tb.generateImpliedEndTags();
-                    if (!tb.currentElement().normalName().equals(name))
-                        tb.error(this);
-                    tb.popStackToClose(name);
                 }
+                tb.generateImpliedEndTags();
+                if (!tb.currentElement().normalName().equals(name))
+                    tb.error(this);
+                tb.popStackToClose(name);
             } else if (name.equals("span")) {
                 // same as final fall through, but saves short circuit
                 return anyOtherEndTag(t, tb);
@@ -662,20 +666,18 @@ enum HtmlTreeBuilderState {
                 if (!tb.inListItemScope(name)) {
                     tb.error(this);
                     return false;
-                } else {
-                    tb.generateImpliedEndTags(name);
-                    if (!tb.currentElement().normalName().equals(name))
-                        tb.error(this);
-                    tb.popStackToClose(name);
                 }
+                tb.generateImpliedEndTags(name);
+                if (!tb.currentElement().normalName().equals(name))
+                    tb.error(this);
+                tb.popStackToClose(name);
             } else if (name.equals("body")) {
                 if (!tb.inScope("body")) {
                     tb.error(this);
                     return false;
-                } else {
-                    // todo: error if stack contains something not dd, dt, li, optgroup, option, p, rp, rt, tbody, td, tfoot, th, thead, tr, body, html
-                    tb.transition(AfterBody);
                 }
+                // todo: error if stack contains something not dd, dt, li, optgroup, option, p, rp, rt, tbody, td, tfoot, th, thead, tr, body, html
+                tb.transition(AfterBody);
             } else if (name.equals("html")) {
                 boolean notIgnored = tb.processEndTag("body");
                 if (notIgnored)
@@ -686,44 +688,40 @@ enum HtmlTreeBuilderState {
                 if (currentForm == null || !tb.inScope(name)) {
                     tb.error(this);
                     return false;
-                } else {
-                    tb.generateImpliedEndTags();
-                    if (!tb.currentElement().normalName().equals(name))
-                        tb.error(this);
-                    // remove currentForm from stack. will shift anything under up.
-                    tb.removeFromStack(currentForm);
                 }
+                tb.generateImpliedEndTags();
+                if (!tb.currentElement().normalName().equals(name))
+                    tb.error(this);
+                // remove currentForm from stack. will shift anything under up.
+                tb.removeFromStack(currentForm);
             } else if (name.equals("p")) {
                 if (!tb.inButtonScope(name)) {
                     tb.error(this);
                     tb.processStartTag(name); // if no p to close, creates an empty <p></p>
                     return tb.process(endTag);
-                } else {
-                    tb.generateImpliedEndTags(name);
-                    if (!tb.currentElement().normalName().equals(name))
-                        tb.error(this);
-                    tb.popStackToClose(name);
                 }
+                tb.generateImpliedEndTags(name);
+                if (!tb.currentElement().normalName().equals(name))
+                    tb.error(this);
+                tb.popStackToClose(name);
             } else if (StringUtil.inSorted(name, Constants.DdDt)) {
                 if (!tb.inScope(name)) {
                     tb.error(this);
                     return false;
-                } else {
-                    tb.generateImpliedEndTags(name);
-                    if (!tb.currentElement().normalName().equals(name))
-                        tb.error(this);
-                    tb.popStackToClose(name);
                 }
+                tb.generateImpliedEndTags(name);
+                if (!tb.currentElement().normalName().equals(name))
+                    tb.error(this);
+                tb.popStackToClose(name);
             } else if (StringUtil.inSorted(name, Constants.Headings)) {
                 if (!tb.inScope(Constants.Headings)) {
                     tb.error(this);
                     return false;
-                } else {
-                    tb.generateImpliedEndTags(name);
-                    if (!tb.currentElement().normalName().equals(name))
-                        tb.error(this);
-                    tb.popStackToClose(Constants.Headings);
                 }
+                tb.generateImpliedEndTags(name);
+                if (!tb.currentElement().normalName().equals(name))
+                    tb.error(this);
+                tb.popStackToClose(Constants.Headings);
             } else if (name.equals("sarcasm")) {
                 // *sigh*
                 return anyOtherEndTag(t, tb);
@@ -931,23 +929,21 @@ enum HtmlTreeBuilderState {
                     break;
                 default:
                     // todo - don't really like the way these table character data lists are built
-                    if (tb.getPendingTableCharacters().size() > 0) {
-                        for (String character : tb.getPendingTableCharacters()) {
-                            if (!isWhitespace(character)) {
-                                // InTable anything else section:
-                                tb.error(this);
-                                if (StringUtil.in(tb.currentElement().normalName(), "table", "tbody", "tfoot", "thead", "tr")) {
-                                    tb.setFosterInserts(true);
-                                    tb.process(new Token.Character().data(character), InBody);
-                                    tb.setFosterInserts(false);
-                                } else {
-                                    tb.process(new Token.Character().data(character), InBody);
-                                }
-                            } else
-                                tb.insert(new Token.Character().data(character));
-                        }
-                        tb.newPendingTableCharacters();
+                    for (String character : tb.getPendingTableCharacters()) {
+                        if (!isWhitespace(character)) {
+                            // InTable anything else section:
+                            tb.error(this);
+                            if (StringUtil.in(tb.currentElement().normalName(), "table", "tbody", "tfoot", "thead", "tr")) {
+                                tb.setFosterInserts(true);
+                                tb.process(new Token.Character().data(character), InBody);
+                                tb.setFosterInserts(false);
+                            } else {
+                                tb.process(new Token.Character().data(character), InBody);
+                            }
+                        } else
+                            tb.insert(new Token.Character().data(character));
                     }
+                    tb.newPendingTableCharacters();
                     tb.transition(tb.originalState());
                     return tb.process(t);
             }

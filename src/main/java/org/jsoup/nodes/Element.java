@@ -1297,13 +1297,11 @@ public class Element extends Node {
         int start = 0;
         for (int i = 0; i < len; i++) {
             if (Character.isWhitespace(classAttr.charAt(i))) {
-                if (inClass) {
-                    // white space ends a class name, compare it with the requested one, ignore case
-                    if (i - start == wantLen && classAttr.regionMatches(true, start, className, 0, wantLen)) {
-                        return true;
-                    }
-                    inClass = false;
+                // white space ends a class name, compare it with the requested one, ignore case
+                if (inClass && i - start == wantLen && classAttr.regionMatches(true, start, className, 0, wantLen)) {
+                    return true;
                 }
+                inClass = false;
             } else {
                 if (!inClass) {
                     // we're in a class name : keep the start of the substring

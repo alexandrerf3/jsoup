@@ -312,52 +312,44 @@ public class Document extends Element {
      * </ul>
      */
     private void ensureMetaCharsetElement() {
-        if (updateMetaCharset) {
-            OutputSettings.Syntax syntax = outputSettings().syntax();
+        if (!updateMetaCharset) return;
+        OutputSettings.Syntax syntax = outputSettings().syntax();
 
-            if (syntax == OutputSettings.Syntax.html) {
-                Element metaCharset = select("meta[charset]").first();
+        if (syntax == OutputSettings.Syntax.html) {
+            Element metaCharset = select("meta[charset]").first();
 
-                if (metaCharset != null) {
-                    metaCharset.attr("charset", charset().displayName());
-                } else {
-                    Element head = head();
+            if (metaCharset != null) {
+                metaCharset.attr("charset", charset().displayName());
+            } else {
+                Element head = head();
 
-                    if (head != null) {
-                        head.appendElement("meta").attr("charset", charset().displayName());
-                    }
+                if (head != null) {
+                    head.appendElement("meta").attr("charset", charset().displayName());
                 }
+            }
 
-                // Remove obsolete elements
-                select("meta[name=charset]").remove();
-            } else if (syntax == OutputSettings.Syntax.xml) {
-                Node node = childNodes().get(0);
+            // Remove obsolete elements
+            select("meta[name=charset]").remove();
+        } else if (syntax == OutputSettings.Syntax.xml) {
+            Node node = childNodes().get(0);
 
-                if (node instanceof XmlDeclaration) {
-                    XmlDeclaration decl = (XmlDeclaration) node;
+            XmlDeclaration decl;
+            if (node instanceof XmlDeclaration && ((XmlDeclaration) node).name().equals("xml")) {
+                decl = (XmlDeclaration) node;
 
-                    if (decl.name().equals("xml")) {
-                        decl.attr("encoding", charset().displayName());
+                decl.attr("encoding", charset().displayName());
 
-                        final String version = decl.attr("version");
+                final String version = decl.attr("version");
 
-                        if (version != null) {
-                            decl.attr("version", "1.0");
-                        }
-                    } else {
-                        decl = new XmlDeclaration("xml", false);
-                        decl.attr("version", "1.0");
-                        decl.attr("encoding", charset().displayName());
-
-                        prependChild(decl);
-                    }
-                } else {
-                    XmlDeclaration decl = new XmlDeclaration("xml", false);
+                if (version != null) {
                     decl.attr("version", "1.0");
-                    decl.attr("encoding", charset().displayName());
-
-                    prependChild(decl);
                 }
+            } else {
+                decl = new XmlDeclaration("xml", false);
+                decl.attr("version", "1.0");
+                decl.attr("encoding", charset().displayName());
+
+                prependChild(decl);
             }
         }
     }

@@ -151,7 +151,7 @@ public class Entities {
             return "";
         StringBuilder accum = StringUtil.borrowBuilder();
         try {
-            escape(accum, string, out, false, false, false);
+            escape(accum, string, out, false, false);
         } catch (IOException e) {
             throw new SerializationException(e); // doesn't happen
         }
@@ -170,8 +170,9 @@ public class Entities {
     }
 
     // this method is ugly, and does a lot. but other breakups cause rescanning and stringbuilder generations
+    // stripLeadingWhite is always false
     static void escape(Appendable accum, String string, Document.OutputSettings out,
-                       boolean inAttribute, boolean normaliseWhite, boolean stripLeadingWhite) throws IOException {
+                       boolean inAttribute, boolean normaliseWhite) throws IOException {
 
         boolean lastWasWhite = false;
         boolean reachedNonWhite = false;
@@ -180,67 +181,68 @@ public class Entities {
         final CoreCharset coreCharset = out.coreCharset; // init in out.prepareEncoder()
         final int length = string.length();
 
+        final boolean notXhtml = escapeMode != EscapeMode.xhtml;
+
         int codePoint;
         for (int offset = 0; offset < length; offset += Character.charCount(codePoint)) {
             codePoint = string.codePointAt(offset);
 
             if (normaliseWhite) {
-                if (StringUtil.isWhitespace(codePoint)) {
-                    if ((stripLeadingWhite && !reachedNonWhite) || lastWasWhite)
-                        continue;
+                if (StringUtil.isWhitespace(codePoint) && !lastWasWhite) {
                     accum.append(' ');
                     lastWasWhite = true;
-                    continue;
-                } else {
-                    lastWasWhite = false;
-                    reachedNonWhite = true;
                 }
+                if (StringUtil.isWhitespace(codePoint)) {
+                    continue;
+                }
+                lastWasWhite = false;
+                reachedNonWhite = true;
             }
             // surrogate pairs, split implementation for efficiency on single char common case (saves creating strings, char[]):
-            if (codePoint < Character.MIN_SUPPLEMENTARY_CODE_POINT) {
-                final char c = (char) codePoint;
-                // html specific and required escapes:
-                switch (c) {
-                    case '&':
-                        accum.append("&amp;");
-                        break;
-                    case 0xA0:
-                        if (escapeMode != EscapeMode.xhtml)
-                            accum.append("&nbsp;");
-                        else
-                            accum.append("&#xa0;");
-                        break;
-                    case '<':
-                        // escape when in character data or when in a xml attribue val; not needed in html attr val
-                        if (!inAttribute || escapeMode == EscapeMode.xhtml)
-                            accum.append("&lt;");
-                        else
-                            accum.append(c);
-                        break;
-                    case '>':
-                        if (!inAttribute)
-                            accum.append("&gt;");
-                        else
-                            accum.append(c);
-                        break;
-                    case '"':
-                        if (inAttribute)
-                            accum.append("&quot;");
-                        else
-                            accum.append(c);
-                        break;
-                    default:
-                        if (canEncode(coreCharset, c, encoder))
-                            accum.append(c);
-                        else
-                            appendEncoded(accum, escapeMode, codePoint);
-                }
-            } else {
+            if (codePoint >= Character.MIN_SUPPLEMENTARY_CODE_POINT) {
                 final String c = new String(Character.toChars(codePoint));
                 if (encoder.canEncode(c)) // uses fallback encoder for simplicity
                     accum.append(c);
                 else
                     appendEncoded(accum, escapeMode, codePoint);
+                continue;
+            }
+            final char c = (char) codePoint;
+            // html specific and required escapes:
+            switch (c) {
+                case '&':
+                    accum.append("&amp;");
+                    break;
+                case 0xA0:
+                    if (escapeMode != EscapeMode.xhtml)
+                        accum.append("&nbsp;");
+                    else
+                        accum.append("&#xa0;");
+                    break;
+                case '<':
+                    // escape when in character data or when in a xml attribue val; not needed in html attr val
+                    if (!inAttribute || escapeMode == EscapeMode.xhtml)
+                        accum.append("&lt;");
+                    else
+                        accum.append(c);
+                    break;
+                case '>':
+                    if (!inAttribute)
+                        accum.append("&gt;");
+                    else
+                        accum.append(c);
+                    break;
+                case '"':
+                    if (inAttribute)
+                        accum.append("&quot;");
+                    else
+                        accum.append(c);
+                    break;
+                default:
+                    if (canEncode(coreCharset, c, encoder))
+                        accum.append(c);
+                    else
+                        appendEncoded(accum, escapeMode, codePoint);
             }
         }
     }

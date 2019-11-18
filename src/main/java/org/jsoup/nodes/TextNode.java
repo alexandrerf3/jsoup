@@ -99,7 +99,7 @@ public class TextNode extends LeafNode {
 
         boolean normaliseWhite = out.prettyPrint() && parent() instanceof Element
                 && !Element.preserveWhitespace(parent());
-        Entities.escape(accum, coreValue(), out, false, normaliseWhite, false);
+        Entities.escape(accum, coreValue(), out, false, normaliseWhite);
     }
 
 	void outerHtmlTail(Appendable accum, int depth, Document.OutputSettings out) {}
