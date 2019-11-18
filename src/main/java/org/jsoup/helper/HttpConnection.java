@@ -89,8 +89,7 @@ public class HttpConnection implements Connection {
      */
 	private static String encodeUrl(String url) {
         try {
-            URL u = new URL(url);
-            return encodeUrl(u).toExternalForm();
+            return encodeUrl(new URL(url)).toExternalForm();
         } catch (Exception e) {
             return url;
         }
@@ -99,10 +98,8 @@ public class HttpConnection implements Connection {
     static URL encodeUrl(URL u) {
         try {
             //  odd way to encode urls, but it works!
-            String urlS = u.toExternalForm(); // URL external form may have spaces which is illegal in new URL() (odd asymmetry)
-            urlS = urlS.replaceAll(" ", "%20");
-            final URI uri = new URI(urlS);
-            return new URL(uri.toASCIIString());
+            String urlS = u.toExternalForm().replaceAll(" ", "%20"); // URL external form may have spaces which is illegal in new URL() (odd asymmetry)
+            return new URL(new URI(urlS).toASCIIString());
         } catch (URISyntaxException | MalformedURLException e) {
             // give up and return the original input
             return u;
@@ -219,11 +216,9 @@ public class HttpConnection implements Connection {
         Validate.notNull(keyvals, "Data key value pairs must not be null");
         Validate.isTrue(keyvals.length %2 == 0, "Must supply an even number of key value pairs");
         for (int i = 0; i < keyvals.length; i += 2) {
-            String key = keyvals[i];
-            String value = keyvals[i+1];
-            Validate.notEmpty(key, "Data key must not be empty");
-            Validate.notNull(value, "Data value must not be null");
-            req.data(KeyVal.create(key, value));
+            Validate.notEmpty(keyvals[i], "Data key must not be empty");
+            Validate.notNull(keyvals[i+1], "Data value must not be null");
+            req.data(KeyVal.create(keyvals[i], keyvals[i+1]));
         }
         return this;
     }
@@ -427,8 +422,7 @@ public class HttpConnection implements Connection {
                     return false;
 
                 while (i < end) {
-                    i++;
-                    o = input[i];
+                    o = input[++i];
                     if ((o & 0xC0) != 0x80) {
                         return false;
                     }
