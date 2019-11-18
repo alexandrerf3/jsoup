@@ -81,13 +81,10 @@ public class FormElement extends Element {
 
         // iterate the form control elements and accumulate their values
         for (Element el: elements) {
-            if (!el.tag().isFormSubmittable()) continue; // contents are form listable, superset of submitable
-            if (el.hasAttr("disabled")) continue; // skip disabled form inputs
             String name = el.attr("name");
-            if (name.length() == 0) continue;
             String type = el.attr("type");
-
-            if (type.equalsIgnoreCase("button")) continue; // browsers don't submit these
+            if (!el.tag().isFormSubmittable() || el.hasAttr("disabled") ||
+                name.length() == 0 || type.equalsIgnoreCase("button")) continue;
 
             if ("select".equals(el.normalName())) {
                 Elements options = el.select("option[selected]");
@@ -96,11 +93,10 @@ public class FormElement extends Element {
                     data.add(HttpConnection.KeyVal.create(name, option.val()));
                     set = true;
                 }
-                if (!set) {
-                    Element option = el.select("option").first();
-                    if (option != null)
-                        data.add(HttpConnection.KeyVal.create(name, option.val()));
-                }
+
+                Element option = el.select("option").first();
+                if (!set && option != null)
+                    data.add(HttpConnection.KeyVal.create(name, option.val()));
             } else if ("checkbox".equalsIgnoreCase(type) || "radio".equalsIgnoreCase(type)) {
                 // only add checkbox or radio if they have the checked attribute
                 if (el.hasAttr("checked")) {

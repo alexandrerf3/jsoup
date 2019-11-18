@@ -117,8 +117,7 @@ public class TextNode extends LeafNode {
      * @deprecated use {@link TextNode#createFromEncoded(String)} instead, as LeafNodes don't carry base URIs.
      */
     public static TextNode createFromEncoded(String encodedText, String baseUri) {
-        String text = Entities.unescape(encodedText);
-        return new TextNode(text);
+        return new TextNode(Entities.unescape(encodedText));
     }
 
     /**
@@ -127,8 +126,7 @@ public class TextNode extends LeafNode {
      * @return TextNode containing unencoded data (e.g. &lt;)
      */
     public static TextNode createFromEncoded(String encodedText) {
-        String text = Entities.unescape(encodedText);
-        return new TextNode(text);
+        return new TextNode(Entities.unescape(encodedText));
     }
 
     static String normaliseWhitespace(String text) {
