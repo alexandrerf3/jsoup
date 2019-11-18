@@ -40,11 +40,10 @@ public class Attributes implements Iterable<Attribute>, Cloneable {
     // check there's room for more
     private void checkCapacity(int minNewSize) {
         Validate.isTrue(minNewSize >= size);
-        int curSize = keys.length;
-        if (curSize >= minNewSize)
+        if (keys.length >= minNewSize)
             return;
 
-        int newSize = curSize >= InitialCapacity ? size * GrowthFactor : InitialCapacity;
+        int newSize = keys.length >= InitialCapacity ? size * GrowthFactor : InitialCapacity;
         if (minNewSize > newSize)
             newSize = minNewSize;
 
@@ -90,8 +89,7 @@ public class Attributes implements Iterable<Attribute>, Cloneable {
      @see #hasKey(String)
      */
     public String get(String key) {
-        int i = indexOfKey(key);
-        return i == NotFound ? EmptyString : checkNotNull(vals[i]);
+        return indexOfKey(key) == NotFound ? EmptyString : checkNotNull(vals[indexOfKey(key)]);
     }
 
     /**
@@ -100,8 +98,7 @@ public class Attributes implements Iterable<Attribute>, Cloneable {
      * @return the first matching attribute value if set; or empty string if not set (ora boolean attribute).
      */
     public String getIgnoreCase(String key) {
-        int i = indexOfKeyIgnoreCase(key);
-        return i == NotFound ? EmptyString : checkNotNull(vals[i]);
+        return indexOfKeyIgnoreCase(key) == NotFound ? EmptyString : checkNotNull(vals[indexOfKeyIgnoreCase(key)]);
     }
 
     /**
@@ -111,8 +108,7 @@ public class Attributes implements Iterable<Attribute>, Cloneable {
     public Attributes add(String key, String value) {
         checkCapacity(size + 1);
         keys[size] = key;
-        vals[size] = value;
-        size++;
+        vals[size++] = value;
         return this;
     }
 
@@ -123,9 +119,8 @@ public class Attributes implements Iterable<Attribute>, Cloneable {
      * @return these attributes, for chaining
      */
     public Attributes put(String key, String value) {
-        int i = indexOfKey(key);
-        if (i != NotFound)
-            vals[i] = value;
+        if (indexOfKey(key) != NotFound)
+            vals[indexOfKey(key)] = value;
         else
             add(key, value);
         return this;
@@ -176,8 +171,7 @@ public class Attributes implements Iterable<Attribute>, Cloneable {
             System.arraycopy(keys, index + 1, keys, index, shifted);
             System.arraycopy(vals, index + 1, vals, index, shifted);
         }
-        size--;
-        keys[size] = null; // release hold
+        keys[--size] = null; // release hold
         vals[size] = null;
     }
 
@@ -186,9 +180,8 @@ public class Attributes implements Iterable<Attribute>, Cloneable {
      @param key attribute key to remove
      */
     public void remove(String key) {
-        int i = indexOfKey(key);
-        if (i != NotFound)
-            remove(i);
+        if (indexOfKey(key) != NotFound)
+            remove(indexOfKey(key));
     }
 
     /**
@@ -196,9 +189,8 @@ public class Attributes implements Iterable<Attribute>, Cloneable {
      @param key attribute key to remove
      */
     public void removeIgnoreCase(String key) {
-        int i = indexOfKeyIgnoreCase(key);
-        if (i != NotFound)
-            remove(i);
+        if (indexOfKeyIgnoreCase(key) != NotFound)
+            remove(indexOfKeyIgnoreCase(key));
     }
 
     /**
