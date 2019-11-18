@@ -700,10 +700,6 @@ enum TokeniserState {
                 case '"':
                     t.transition(AttributeValue_doubleQuoted);
                     break;
-                case '&':
-                    r.unconsume();
-                    t.transition(AttributeValue_unquoted);
-                    break;
                 case '\'':
                     t.transition(AttributeValue_singleQuoted);
                     break;
@@ -1591,11 +1587,8 @@ enum TokeniserState {
         void read(Tokeniser t, CharacterReader r) {
             char c = r.consume();
             switch (c) {
-                case '>':
-                    t.emitDoctypePending();
-                    t.transition(Data);
-                    break;
                 case eof:
+                case '>':
                     t.emitDoctypePending();
                     t.transition(Data);
                     break;

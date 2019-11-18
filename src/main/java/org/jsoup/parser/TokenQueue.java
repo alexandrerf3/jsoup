@@ -3,6 +3,8 @@ package org.jsoup.parser;
 import org.jsoup.internal.StringUtil;
 import org.jsoup.helper.Validate;
 
+import java.util.Locale;
+
 /**
  * A character queue with parsing helpers.
  *
@@ -191,7 +193,7 @@ public class TokenQueue {
     public String consumeToIgnoreCase(String seq) {
         int start = pos;
         String first = seq.substring(0, 1);
-        boolean canScan = first.toLowerCase().equals(first.toUpperCase()); // if first is not cased, use index of
+        boolean canScan = first.toLowerCase(Locale.getDefault()).equals(first.toUpperCase(Locale.getDefault())); // if first is not cased, use index of
         while (!isEmpty()) {
             if (matches(seq))
                 break;

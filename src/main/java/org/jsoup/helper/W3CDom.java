@@ -10,6 +10,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Text;
 
+import javax.xml.bind.ValidationEvent;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -117,6 +118,7 @@ public class W3CDom {
         }
 
         public void tail(org.jsoup.nodes.Node source, int depth) {
+            assert dest != null;
             if (source instanceof org.jsoup.nodes.Element && dest.getParentNode() instanceof Element) {
                 dest = (Element) dest.getParentNode(); // undescend. cromulent.
             }

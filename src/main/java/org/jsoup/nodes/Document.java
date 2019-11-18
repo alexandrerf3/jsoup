@@ -110,11 +110,11 @@ public class Document extends Element {
         return new Element(Tag.valueOf(tagName, ParseSettings.preserveCase), this.baseUri());
     }
 
-    /**
+    /*/**
      Normalise the document. This happens after the parse phase so generally does not need to be called.
      Moves any text content that is not in the body element into the body.
      @return this document after normalisation
-     */
+
     public Document normalise() {
         Element htmlEl = findFirstElementByTagName("html", this);
         if (htmlEl == null)
@@ -136,9 +136,9 @@ public class Document extends Element {
         ensureMetaCharsetElement();
         
         return this;
-    }
+    }*/
 
-    // does not recurse.
+    /*// does not recurse.
     private void normaliseTextNodes(Element element) {
         List<Node> toMove = new ArrayList<>();
         for (Node node: element.childNodes) {
@@ -155,9 +155,9 @@ public class Document extends Element {
             body().prependChild(new TextNode(" "));
             body().prependChild(node);
         }
-    }
+    }*/
 
-    // merge multiple <head> or <body> contents into one, delete the remainder, and ensure they are owned by <html>
+    /*// merge multiple <head> or <body> contents into one, delete the remainder, and ensure they are owned by <html>
     private void normaliseStructure(String tag, Element htmlEl) {
         Elements elements = this.getElementsByTag(tag);
         Element master = elements.first(); // will always be available as created above if not existent
@@ -176,7 +176,7 @@ public class Document extends Element {
         if (!master.parent().equals(htmlEl)) {
             htmlEl.appendChild(master); // includes remove()            
         }
-    }
+    }*/
 
     // fast method to get first by tag name, used for html, head, body finders
     private Element findFirstElementByTagName(String tag, Node node) {

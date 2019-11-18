@@ -607,10 +607,10 @@ enum HtmlTreeBuilderState {
                     tb.replaceOnStack(node, replacement);
                     node = replacement;
 
-                    if (lastNode == furthestBlock) {
+                    /*if (lastNode == furthestBlock) {
                         // todo: move the aforementioned bookmark to be immediately after the new node in the list of active formatting elements.
                         // not getting how this bookmark both straddles the element above, but is inbetween here...
-                    }
+                    }*/
                     if (lastNode.parent() != null)
                         lastNode.remove();
                     node.appendChild(lastNode);
@@ -776,6 +776,7 @@ enum HtmlTreeBuilderState {
         }
 
         boolean anyOtherEndTag(Token t, HtmlTreeBuilder tb) {
+            assert t.asEndTag().normalName != null;
             String name = t.asEndTag().normalName; // case insensitive search - goal is to preserve output case, not for the parse to be case sensitive
             ArrayList<Element> stack = tb.getStack();
             for (int pos = stack.size() -1; pos >= 0; pos--) {
@@ -1012,6 +1013,7 @@ enum HtmlTreeBuilderState {
                     break;
                 case EndTag:
                     Token.EndTag endTag = t.asEndTag();
+                    assert endTag.normalName != null;
                     if (endTag.normalName.equals("colgroup")) {
                         if (tb.currentElement().normalName().equals("html")) { // frag case
                             tb.error(this);

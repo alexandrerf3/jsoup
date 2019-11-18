@@ -12,6 +12,8 @@ public class UncheckedIOException extends RuntimeException {
     }
 
     public IOException ioException() {
-        return (IOException) getCause();
+        Throwable cause = getCause();
+        assert cause instanceof IOException;
+        return (IOException) cause;
     }
 }
